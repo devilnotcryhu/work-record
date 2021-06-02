@@ -1,5 +1,7 @@
 package com.stream.like.record;
 
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang.StringUtils;
 import org.bytedeco.javacpp.avcodec;
 import org.bytedeco.javacv.FFmpegFrameRecorder;
 import org.bytedeco.javacv.Frame;
@@ -14,6 +16,7 @@ import java.nio.ShortBuffer;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 public class VideoRecord {
     //线程池 screenTimer
     private ScheduledThreadPoolExecutor screenTimer;
@@ -35,7 +38,77 @@ public class VideoRecord {
     private long pauseTime = 0;
     private double frameRate = 24;
 
-    public VideoRecord(String fileName, boolean isHaveDevice,Rectangle rectangle1) {
+    private String fileName;
+
+
+    public VideoRecord(){
+    }
+
+    public void start(String fileName,Rectangle rectangle,boolean isHaveDevice) throws Exception {
+        this.fileName = fileName;
+        this.rectangle = rectangle;
+        this.isHaveDevice = isHaveDevice;
+
+        init();
+
+        start();
+    }
+
+    public void init() throws Exception {
+        if (null == rectangle){
+            log.error("VideoRecord init fail,rectangle is null");
+            throw new Exception("VideoRecord init fail,rectangle is null");
+        }
+
+        if (StringUtils.isBlank(fileName)){
+            log.error("VideoRecord init fail, fileName is null");
+            throw new Exception("VideoRecord init fail,fileName is null");
+        }
+
+        recorder = new FFmpegFrameRecorder(fileName + ".mp4", (int)rectangle.getWidth(), (int)rectangle.getHeight());
+        //recorder.setVideoCodec(avcodec.AV_CODEC_ID_H265); // 28
+        // recorder.setVideoCodec(avcodec.AV_CODEC_ID_FLV1); // 28
+        recorder.setVideoCodec(avcodec.AV_CODEC_ID_MPEG4); // 13
+        recorder.setFormat("mp4");
+        // recorder.setFormat("mov,mp4,m4a,3gp,3g2,mj2,h264,ogg,MPEG4");
+        recorder.setSampleRate(44100);
+        recorder.setFrameRate(frameRate);
+
+
+        recorder.setVideoQuality(0);
+        recorder.setVideoOption("crf", "23");
+        // 2000 kb/s, 720P视频的合理比特率范围
+        recorder.setVideoBitrate(1000000);
+
+
+        /**
+         * 权衡quality(视频质量)和encode speed(编码速度) values(值)： ultrafast(终极快),superfast(超级快),
+         * veryfast(非常快), faster(很快), fast(快), medium(中等), slow(慢), slower(很慢),
+         * veryslow(非常慢)
+         * ultrafast(终极快)提供最少的压缩（低编码器CPU）和最大的视频流大小；而veryslow(非常慢)提供最佳的压缩（高编码器CPU）的同时降低视频流的大小
+         * 参考：https://trac.ffmpeg.org/wiki/Encode/H.264 官方原文参考：-preset ultrafast as the
+         * name implies provides for the fastest possible encoding. If some tradeoff
+         * between quality and encode speed, go for the speed. This might be needed if
+         * you are going to be transcoding multiple streams on one machine.
+         */
+        recorder.setVideoOption("preset", "slow");
+        recorder.setPixelFormat(0); // yuv420p = 0
+        recorder.setAudioChannels(2);
+        recorder.setAudioOption("crf", "0");
+        // Highest quality
+        recorder.setAudioQuality(0);
+        recorder.setAudioCodec(avcodec.AV_CODEC_ID_AAC);
+
+        robot = new Robot();
+
+        recorder.start();
+    }
+
+
+
+
+
+    public VideoRecord(String fileName, boolean isHaveDevice, Rectangle rectangle1) {
         rectangle = rectangle1;
         // TODO Auto-generated constructor stub
         System.out.println(rectangle1.getWidth());
@@ -274,4 +347,21 @@ public class VideoRecord {
         pauseTime = System.currentTimeMillis();
     }
 
+
+    public Rectangle getRectangle() {
+        return rectangle;
+    }
+
+    public void setRectangle(Rectangle rectangle) {
+        this.rectangle = rectangle;
+    }
+
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
 }
